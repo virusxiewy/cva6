@@ -14,9 +14,8 @@
 // Description: Hardware-PTW
 
 /* verilator lint_off WIDTH */
-import ariane_pkg::*;
 
-module ptw #(
+module ptw import ariane_pkg::*; #(
         parameter int ASID_WIDTH = 1,
         parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig
 ) (
@@ -61,8 +60,9 @@ module ptw #(
     output logic                    itlb_miss_o,
     output logic                    dtlb_miss_o,
     // PMP
-    input  riscv::pmpcfg_t [ArianeCfg.NrPMPEntries-1:0]  pmpcfg_i,
-    input  logic [ArianeCfg.NrPMPEntries-1:0][53:0]      pmpaddr_i,
+
+    input  riscv::pmpcfg_t [15:0]   pmpcfg_i,
+    input  logic [15:0][53:0]       pmpaddr_i,
     output logic [riscv::PLEN-1:0]  bad_paddr_o
 
 );

@@ -12,9 +12,8 @@
 // Date: 19.04.2017
 // Description: Load Store Unit, handles address calculation and memory interface signals
 
-import ariane_pkg::*;
 
-module load_store_unit #(
+module load_store_unit import ariane_pkg::*; #(
     parameter int unsigned ASID_WIDTH = 1,
     parameter ariane_pkg::ariane_cfg_t ArianeCfg = ariane_pkg::ArianeDefaultConfig
 )(
@@ -69,8 +68,8 @@ module load_store_unit #(
     output amo_req_t                 amo_req_o,
     input  amo_resp_t                amo_resp_i,
     // PMP
-    input  riscv::pmpcfg_t [ArianeCfg.NrPMPEntries-1:0] pmpcfg_i,
-    input  logic [ArianeCfg.NrPMPEntries-1:0][53:0]     pmpaddr_i
+    input  riscv::pmpcfg_t [15:0]    pmpcfg_i,
+    input  logic [15:0][53:0]        pmpaddr_i
 );
     // data is misaligned
     logic data_misaligned;
@@ -404,7 +403,7 @@ endmodule
 // the LSU control should sample it and store it for later application to the units. It does so, by storing it in a
 // two element FIFO. This is necessary as we only know very late in the cycle whether the load/store will succeed (address check,
 // TLB hit mainly). So we better unconditionally allow another request to arrive and store this request in case we need to.
-module lsu_bypass (
+module lsu_bypass import ariane_pkg::*; (
     input  logic      clk_i,
     input  logic      rst_ni,
     input  logic      flush_i,

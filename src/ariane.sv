@@ -22,9 +22,8 @@ import "DPI-C" function void dromajo_step(int     hart_id,
 import "DPI-C" function void init_dromajo(string cfg_f_name);
 `endif
 
-import ariane_pkg::*;
 
-module ariane #(
+module ariane import ariane_pkg::*; #(
   parameter ariane_pkg::ariane_cfg_t ArianeCfg     = ariane_pkg::ArianeDefaultConfig
 ) (
   input  logic                         clk_i,
@@ -182,8 +181,8 @@ module ariane #(
   logic                     icache_en_csr;
   logic                     debug_mode;
   logic                     single_step_csr_commit;
-  riscv::pmpcfg_t [ArianeCfg.NrPMPEntries-1:0] pmpcfg;
-  logic [ArianeCfg.NrPMPEntries-1:0][53:0]     pmpaddr;
+  riscv::pmpcfg_t [15:0]    pmpcfg;
+  logic [15:0][53:0]        pmpaddr;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
