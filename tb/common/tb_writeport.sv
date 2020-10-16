@@ -18,7 +18,7 @@
 
 
 
-program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg::*; #(
+program tb_writeport  import tb_pkg::*; import ariane_pkg::*; #(
   parameter string       PortName      = "write port 0",
   parameter              MemWords      = 1024*1024,// in 64bit words
   parameter logic [63:0] CachedAddrBeg = 0,
@@ -149,6 +149,30 @@ program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pk
     dut_req_port_o.data_wdata    = 'x;
   endtask : genSeqWrite
 
+  // Repeadedly write to the same address
+  task automatic genConstWrite();
+    automatic logic [63:0] val;
+    paddr                         = CachedAddrBeg;
+    dut_req_port_o.data_req       = '0;
+    dut_req_port_o.data_size      = '0;
+    dut_req_port_o.data_be        = '0;
+    dut_req_port_o.data_wdata     = 'x;
+    repeat(seq_num_vect_i) begin
+      void'(randomize(val));
+      dut_req_port_o.data_req   = 1'b1;
+      dut_req_port_o.data_size  = 2'b11;
+      dut_req_port_o.data_be    = '1;
+      dut_req_port_o.data_wdata = val;
+      `APPL_WAIT_COMB_SIG(clk_i, dut_req_port_i.data_gnt)
+      `APPL_WAIT_CYC(clk_i,1)
+    end
+    paddr                        = '0;
+    dut_req_port_o.data_req      = '0;
+    dut_req_port_o.data_size     = '0;
+    dut_req_port_o.data_be       = '0;
+    dut_req_port_o.data_wdata    = 'x;
+  endtask : genConstWrite
+
   task automatic genWrapSeq();
     automatic logic [63:0] val;
     void'($urandom(RndSeed));
@@ -202,7 +226,7 @@ program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pk
         void'(randomize(paddr) with {paddr >= 0; paddr < (MemWords<<3);});
 
         // do a random burst
-        void'(randomize(burst_len) with {burst_len >= 0; burst_len < 100;});
+        void'(randomize(burst_len) with {burst_len >= 1; burst_len < 100;});
         for(int k=0; k<burst_len && cnt < seq_num_vect_i && paddr < ((MemWords-1)<<3); k++) begin
           applyRandData();
           `APPL_WAIT_COMB_SIG(clk_i, dut_req_port_i.data_gnt)
@@ -212,7 +236,6 @@ program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pk
           cnt ++;
         end
       end
-      `APPL_WAIT_CYC(clk_i,1)
     end
 
     paddr                        = '0;
@@ -259,6 +282,10 @@ program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pk
           $display("%s> start linear sequence with %04d vectors and req_rate %03d", PortName, seq_num_vect_i, req_rate_i);
           genSeqWrite();
         end
+        CONST_SEQ: begin
+          $display("%s> start constant sequence with %04d vectors and req_rate %03d", PortName, seq_num_vect_i, req_rate_i);
+          genConstWrite();
+        end
         WRAP_SEQ: begin
           $display("%s> start wrapping sequence with %04d vectors and req_rate %03d", PortName, seq_num_vect_i, req_rate_i);
           genWrapSeq();
@@ -267,6 +294,9 @@ program tb_writeport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pk
         BURST_SEQ: begin
           $display("%s> start burst sequence with %04d vectors and req_rate %03d", PortName, seq_num_vect_i, req_rate_i);
           genSeqBurst();
+        end
+        SET_SEQ: begin
+          $fatal(1, "Set sequence not implemented for write port agent.");
         end
       endcase // seq_type_i
       seq_done_o = 1'b1;

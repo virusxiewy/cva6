@@ -22,9 +22,13 @@ sim_opts     += -64 -coverage -classdebug -voptargs="+acc"
 questa_version ?= ${QUESTASIM_VERSION}
 incdir       += ../common/
 
+# Iterate over all include directories and write them with +incdir+ prefixed
+# +incdir+ works for Verilator and QuestaSim
+list_incdir := $(foreach dir, ${incdir}, +incdir+$(dir))
+
 build: clean
 	vlib${questa_version} $(library)
-	vlog${questa_version} -work $(library) -pedanticerrors $(src) $(compile_flag) +incdir+$(incdir)
+	vlog${questa_version} -work $(library) -pedanticerrors $(src) $(compile_flag) $(list_incdir)
 	touch $(library)/.build
 
 # this starts modelsim with gui

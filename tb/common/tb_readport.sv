@@ -19,7 +19,7 @@
 
 
 
-program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg::*; #(
+program tb_readport  import tb_pkg::*; import ariane_pkg::*; #(
   parameter string       PortName      = "read port 0",
   parameter              FlushRate     = 1,
   parameter              KillRate      = 5,
@@ -100,7 +100,7 @@ program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg
         end
 
         `APPL_ACQ_WAIT;
-        if(dut_req_port_o.data_req) begin
+        if(dut_req_port_i.data_gnt) begin
           tmp_paddr = paddr;
           tmp_vld   = 1;
 
@@ -110,7 +110,7 @@ program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg
               void'(randomize(cnt) with {cnt>0; cnt<=50;});
             end
           end
-         end
+        end
       end else begin
         tag_vld_q <= 1'b0;
         cnt -= 1;
@@ -218,6 +218,33 @@ program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg
     dut_req_port_o.kill_req      = '0;
   endtask : genSeqRead
 
+  // Generate a sequence of reads to the same set (constant index)
+  task automatic genSetSeqRead();
+    automatic logic [63:0] val, rnd;
+    paddr                        = CachedAddrBeg + 2 ** DCACHE_INDEX_WIDTH;
+    dut_req_port_o.data_req      = '0;
+    dut_req_port_o.data_size     = '0;
+    dut_req_port_o.kill_req      = '0;
+    val                          = CachedAddrBeg + 2 ** DCACHE_INDEX_WIDTH;
+    while(~seq_end_req) begin
+      void'(randomize(rnd) with {rnd > 0; rnd <= 100;});
+      if(rnd < req_rate_i) begin
+        dut_req_port_o.data_req  = 1'b1;
+        dut_req_port_o.data_size = 2'b11;
+        paddr = val;
+        // generate linear read
+        `APPL_WAIT_COMB_SIG(clk_i, dut_req_port_i.data_gnt)
+        // increment by set size
+        val = (val + 2 ** DCACHE_INDEX_WIDTH) % (MemWords<<3);
+      end
+      `APPL_WAIT_CYC(clk_i,1)
+      dut_req_port_o.data_req      = '0;
+    end
+    dut_req_port_o.data_req      = '0;
+    dut_req_port_o.data_size     = '0;
+    dut_req_port_o.kill_req      = '0;
+  endtask : genSetSeqRead
+
   task automatic genWrapSeq();
     automatic logic [63:0] val;
     paddr                        = CachedAddrBeg;
@@ -278,6 +305,10 @@ program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg
           $display("%s> start linear sequence with %04d responses and req_rate %03d", PortName, seq_num_resp_i, req_rate_i);
           genSeqRead();
         end
+        SET_SEQ: begin
+          $display("%s> start set sequence with %04d responses and req_rate %03d", PortName, seq_num_resp_i, req_rate_i);
+          genSetSeqRead();
+        end
         WRAP_SEQ: begin
           $display("%s> start wrapping sequence with %04d responses and req_rate %03d", PortName, seq_num_resp_i, req_rate_i);
           genWrapSeq();
@@ -287,6 +318,9 @@ program tb_readport  import tb_pkg::*; import ariane_pkg::*; import wt_cache_pkg
         end
         BURST_SEQ: begin
           $fatal(1, "Burst sequence not implemented for read port agent");
+        end
+        CONST_SEQ: begin
+          $fatal(1, "Constant sequence not implemented for read port agent.");
         end
       endcase // seq_type_i
       seq_end_ack = 1'b1;
